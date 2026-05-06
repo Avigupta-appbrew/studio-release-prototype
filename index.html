@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Studio — Releases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Outfit', 'Inter', ui-sans-serif, system-ui; background: #F9FAFB; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+textarea, input, select { font-family: 'Outfit', 'Inter', ui-sans-serif, system-ui; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.35} }
+.pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
+const T = {
+  /* blues */
+  ctaBg:      '#0033A0',   /* primary CTA — dark navy                         */
+  ctaHov:     '#002B87',
+  blue:       '#005DFF',   /* interactive — radios, checkboxes, outlined btn  */
+  blue50:     '#EBF6FF',
+  blue100:    '#D1ECFF',
+  /* danger */
+  red:        '#FC401F',
+  red50:      '#FFF2ED',
+  red100:     '#FFE2D4',
+  red200:     '#FFC1A9',
+  red700:     '#C4100A',
+  red900:     '#7D1112',
+  /* success */
+  green:      '#16A34A',
+  green50:    '#F0FDF4',
+  /* neutrals — from Figma node 1:17560 */
+  sidebar:    '#1E2939',
+  white:      '#FFFFFF',
+  pageBg:     '#F9FAFB',   /* gray/50  */
+  inputBd:    '#E5E7EB',   /* gray/200 — borders for inputs AND cards          */
+  border:     '#E5E7EB',   /* gray/200                                         */
+  muted:      '#F9FAFB',   /* gray/50  */
+  text:       '#1E2939',   /* gray/800 — primary text                          */
+  textMd:     '#374151',   /* gray/700                                         */
+  textLt:     '#6a7282',   /* gray/500                                         */
+  textXlt:    '#9CA3AF',   /* gray/400                                         */
+};
+
+/* ─── SVG icons (24×24 viewbox, fill=currentColor) ──────────────────────── */
+const PATHS = {
+  design:       'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+  analytics:    'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z',
+  tag:          'M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z',
+  bell:         'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+  rocket:       'M13.13 22.19L11.5 18.36C13.07 17.78 14.54 17 15.9 16.09L13.13 22.19M5.64 12.5L1.81 10.87 7.91 8.1C7 9.46 6.22 10.93 5.64 12.5M19.22 4C19.5 4 19.75 4 20 4.05C20.55 9.19 18.5 14 15 17.43L6.57 9C10 5.5 14.81 3.45 19.22 4M8 12C8 12 4 14.69 4 17.31C4 19.9 6.1 22 8.69 22C11.31 22 14 18 14 18L8 12Z',
+  settings:     'M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z',
+  check:        'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  close:        'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  copy:         'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
+  download:     'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+  external:     'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
+  arrowRight:   'M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z',
+  warning:      'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+  info:         'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  chevronDown:  'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z',
+  chevronRight: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+  mail:         'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
+  checkCircle:  'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+  alertCircle:  'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
+  store:        'M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z',
+  refresh:      'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+};
+
+const Ic = ({ n, sz = 16, col = 'currentColor', style: s = {} }) => (
+  <svg width={sz} height={sz} viewBox="0 0 24 24" fill={col} style={{ flexShrink: 0, display: 'block', ...s }}>
+    {n === 'apple' ? (
+      <><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83z" /><path d="M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" /></>
+    ) : n === 'android' ? (
+      <><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5S11 23.33 11 22.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 16.33 2 15.5v-7C2 7.67 2.67 7 3.5 7S5 7.67 5 8.5v7c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-7c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v7c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0012 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.948 5.948 0 006 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z" /></>
+    ) : (
+      <path d={PATHS[n] || ''} />
+    )}
+  </svg>
+);
+
+/* ─── Primitives ─────────────────────────────────────────────────────────── */
+
+/* Section header — Figma: Outfit Medium 13px uppercase #1E2939 */
+const SecHead = ({ children, right }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{children}</span>
+    {right}
+  </div>
+);
+
+/* Field label — Outfit Medium 12px #6a7282 */
+const FieldLabel = ({ children }) => (
+  <div style={{ fontSize: 12, fontWeight: 500, color: T.textLt, marginBottom: 6 }}>{children}</div>
+);
+
+/* Input — border #E5E7EB, borderRadius 8, padding 10px */
+const Input = ({ value, onChange, placeholder, type = 'text', prefix, rows, style: extra = {} }) => {
+  const [focus, setFocus] = useState(false);
+  const base = {
+    width: '100%', border: `1px solid ${focus ? T.blue : T.border}`,
+    borderRadius: 8, padding: rows ? '10px 12px' : '9px 12px',
+    fontSize: 13, color: T.text, outline: 'none', background: T.white,
+    fontFamily: 'Outfit, Inter, sans-serif', lineHeight: 1.5, ...extra,
+  };
+  if (rows) return (
+    <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows}
+      style={{ ...base, resize: 'vertical' }}
+      onFocus={() => setFocus(true)} onBlur={() => setFocus(false)} />
+  );
+  if (prefix) return (
+    <div style={{ display: 'flex', border: `1px solid ${focus ? T.blue : T.border}`, borderRadius: 8, overflow: 'hidden', background: T.white }}>
+      <span style={{ padding: '9px 12px', borderRight: `1px solid ${T.border}`, fontSize: 13, color: T.textLt, background: T.muted, flexShrink: 0 }}>{prefix}</span>
+      <input type={type} value={value} onChange={onChange} placeholder={placeholder}
+        style={{ border: 'none', outline: 'none', flex: 1, padding: '9px 12px', fontSize: 13, color: T.text, fontFamily: 'Outfit, Inter, sans-serif' }}
+        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)} />
+    </div>
+  );
+  return <input type={type} value={value} onChange={onChange} placeholder={placeholder}
+    style={base} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)} />;
+};
+
+/* Checkbox — blue fill when checked */
+const Checkbox = ({ checked, onChange, label }) => (
+  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+    <div onClick={() => onChange(!checked)} style={{
+      width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+      background: checked ? T.blue : T.white,
+      border: `1.5px solid ${checked ? T.blue : T.border}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {checked && <Ic n="check" sz={11} col="#fff" />}
+    </div>
+    {label && <span style={{ fontSize: 13, color: T.textMd }}>{label}</span>}
+  </label>
+);
+
+/* Radio card — Figma: border 1.5px #005dff active, borderRadius 8 */
+const RadioCard = ({ checked, onChange, label, desc }) => (
+  <div onClick={onChange} style={{
+    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+    border: `1.5px solid ${checked ? T.blue : T.border}`, borderRadius: 8,
+    cursor: 'pointer', flex: 1, background: T.white, transition: 'border-color .15s',
+  }}>
+    <div style={{
+      width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+      border: `2px solid ${checked ? T.blue : '#CBD5E1'}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {checked && <div style={{ width: 7, height: 7, borderRadius: '50%', background: T.blue }} />}
+    </div>
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{label}</div>
+      {desc && <div style={{ fontSize: 11, color: T.textLt, marginTop: 1 }}>{desc}</div>}
+    </div>
+  </div>
+);
+
+/* Primary CTA button — dark navy #0033A0, borderRadius 8 */
+const BtnPrimary = ({ children, onClick, disabled, icon, style: extra = {}, fullWidth }) => (
+  <button onClick={disabled ? undefined : onClick} disabled={disabled} style={{
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    background: disabled ? '#9CA3AF' : T.ctaBg, color: '#fff',
+    border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600,
+    cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Outfit, Inter, sans-serif',
+    width: fullWidth ? '100%' : 'auto', transition: 'background .15s', ...extra,
+  }}
+    onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = T.ctaHov; }}
+    onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = T.ctaBg; }}>
+    {icon && <Ic n={icon} sz={14} col="#fff" />}
+    {children}
+  </button>
+);
+
+/* Outlined button — blue border, borderRadius 8 */
+const BtnOutline = ({ children, onClick, icon, style: extra = {} }) => (
+  <button onClick={onClick} style={{
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    background: T.white, color: T.blue,
+    border: `1.5px solid ${T.blue}`, borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500,
+    cursor: 'pointer', fontFamily: 'Outfit, Inter, sans-serif', transition: 'background .12s', ...extra,
+  }}
+    onMouseEnter={e => e.currentTarget.style.background = T.blue50}
+    onMouseLeave={e => e.currentTarget.style.background = T.white}>
+    {icon && <Ic n={icon} sz={14} col={T.blue} />}
+    {children}
+  </button>
+);
+
+/* Ghost / text link button */
+const BtnGhost = ({ children, onClick, style: extra = {} }) => (
+  <button onClick={onClick} style={{
+    background: 'none', border: 'none', color: T.textLt, fontSize: 13,
+    cursor: 'pointer', fontFamily: 'Outfit, Inter, sans-serif', padding: '7px 12px',
+    display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 8,
+    transition: 'background .12s', ...extra,
+  }}
+    onMouseEnter={e => e.currentTarget.style.background = T.pageBg}
+    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+    {children}
+  </button>
+);
+
+/* Release dropdown CTA — single button, two options with subtext */
+const ReleaseDropdown = ({ go }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const opts = [
+    {
+      icon: 'rocket', screen: 2,
+      label: 'Create test release',
+      desc:  'Build and install on a device before going live',
+    },
+    {
+      icon: 'store', screen: 5,
+      label: 'Release to stores',
+      desc:  'Submit v1.7.0 directly to App Store & Google Play',
+    },
+  ];
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
+      {/* Main button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: T.ctaBg, color: '#fff', border: 'none',
+          borderRadius: 8, padding: '9px 16px',
+          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          fontFamily: 'Outfit, Inter, sans-serif', transition: 'background .15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = T.ctaHov}
+        onMouseLeave={e => e.currentTarget.style.background = T.ctaBg}
+      >
+        Create release
+        <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.28)', flexShrink: 0 }} />
+        <Ic n="chevronDown" sz={14} col="#fff"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s', flexShrink: 0 }} />
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+          background: T.white, border: `1px solid ${T.border}`, borderRadius: 12,
+          boxShadow: '0 8px 24px rgba(0,21,64,0.10), 0 2px 8px rgba(0,21,64,0.06)',
+          overflow: 'hidden', minWidth: 300, zIndex: 200,
+        }}>
+          {opts.map((o, i) => (
+            <button
+              key={o.screen}
+              onClick={() => { setOpen(false); go(o.screen); }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '14px 16px', background: 'transparent',
+                border: 'none', borderBottom: i < opts.length - 1 ? `1px solid ${T.border}` : 'none',
+                cursor: 'pointer', textAlign: 'left', transition: 'background .12s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = T.pageBg}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                background: T.blue50, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ic n={o.icon} sz={17} col={T.ctaBg} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 2 }}>{o.label}</div>
+                <div style={{ fontSize: 12, color: T.textLt, lineHeight: 1.4 }}>{o.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* Divider */
+const Divider = () => <div style={{ height: 1, background: T.border, margin: '20px 0' }} />;
+
+/* Status badge */
+const Badge = ({ status }) => {
+  const map = {
+    Live:         { bg: '#F0FDF4', text: '#15803D', dot: '#16A34A' },
+    'In Review':  { bg: '#FFFBEB', text: '#B45309', dot: '#D97706' },
+    Failed:       { bg: '#FFF2ED', text: '#C4100A', dot: T.red     },
+    Building:     { bg: T.blue50,  text: T.ctaBg,   dot: T.blue    },
+    Signing:      { bg: '#F5F3FF', text: '#6D28D9',  dot: '#7C3AED' },
+    Queued:       { bg: T.muted,   text: T.textLt,   dot: T.textXlt },
+    Rejected:     { bg: '#FFF2ED', text: '#C4100A', dot: T.red     },
+    'Not set up': { bg: T.muted,   text: T.textLt,   dot: T.textXlt },
+    Connected:    { bg: '#F0FDF4', text: '#15803D', dot: '#16A34A' },
+  };
+  const s = map[status] || map.Queued;
+  return (
+    <span style={{ background: s.bg, color: s.text, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block', flexShrink: 0 }} />
+      {status}
+    </span>
+  );
+};
+
+/* Demo error toggle */
+const DemoToggle = ({ label, on, onChange }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <span style={{ fontSize: 11, color: T.textXlt }}>{label}</span>
+    <button onClick={() => onChange(!on)} style={{
+      width: 32, height: 18, borderRadius: 99, border: 'none',
+      background: on ? T.red : '#D1D5DB', cursor: 'pointer', position: 'relative', flexShrink: 0,
+      transition: 'background .2s',
+    }}>
+      <span style={{
+        position: 'absolute', top: 2, left: on ? 14 : 2,
+        width: 14, height: 14, borderRadius: '50%', background: '#fff',
+        transition: 'left .2s', boxShadow: '0 1px 2px rgba(0,0,0,.2)',
+      }} />
+    </button>
+  </div>
+);
+
+/* Progress bar */
+const ProgBar = ({ pct, color = T.blue }) => (
+  <div style={{ height: 5, background: T.border, borderRadius: 99, overflow: 'hidden' }}>
+    <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width .5s' }} />
+  </div>
+);
+
+/* Segmented release step bar */
+const RELEASE_STEPS = ['Build', 'Sign', 'Submit', 'Review'];
+const StepBar = ({ pct, color, activeIdx }) => (
+  <div>
+    <div style={{ height: 5, background: T.border, borderRadius: 99, overflow: 'hidden', position: 'relative', marginBottom: 6 }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width .6s' }} />
+      {[1,2,3].map(i => (
+        <div key={i} style={{ position: 'absolute', top: 0, left: `${i*25}%`, width: 2, height: '100%', background: T.white, zIndex: 1 }} />
+      ))}
+    </div>
+    <div style={{ display: 'flex' }}>
+      {RELEASE_STEPS.map((s, i) => (
+        <div key={s} style={{ flex: 1, fontSize: 10, fontWeight: i === activeIdx ? 600 : 400, color: i === activeIdx ? T.text : T.textXlt, textAlign: i === 0 ? 'left' : i === 3 ? 'right' : 'center' }}>{s}</div>
+      ))}
+    </div>
+  </div>
+);
+
+/* Step trail */
+const Steps = ({ steps, color = T.blue }) => (
+  <div style={{ display: 'flex', alignItems: 'center' }}>
+    {steps.map((s, i) => (
+      <React.Fragment key={s.id}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: s.done ? T.green : s.active ? color : '#E5E7EB',
+            border: s.active ? `2px solid ${color}` : 'none',
+          }}>
+            {s.done
+              ? <Ic n="check" sz={13} col="#fff" />
+              : <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.active ? '#fff' : '#9CA3AF', display: 'block' }}
+                  className={s.active ? 'pulse-dot' : ''} />
+            }
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 500, color: s.done || s.active ? T.textMd : T.textXlt, maxWidth: 56, textAlign: 'center', lineHeight: 1.3 }}>{s.label}</span>
+        </div>
+        {i < steps.length - 1 && (
+          <div style={{ flex: 1, height: 1.5, background: steps[i+1].done || s.done ? T.green : T.border, marginBottom: 19 }} />
+        )}
+      </React.Fragment>
+    ))}
+  </div>
+);
+
+/* Info note bar */
+const Note = ({ children, type = 'info' }) => {
+  const m = {
+    info:    { bg: '#EFF6FF', bd: '#BFDBFE', col: '#1D4ED8' },
+    success: { bg: T.green50, bd: '#BBF7D0', col: '#166534' },
+    warn:    { bg: '#FFFBEB', bd: '#FDE68A', col: '#92400E' },
+    danger:  { bg: T.red50,  bd: T.red100,   col: T.red700  },
+  };
+  const s = m[type];
+  return (
+    <div style={{ background: s.bg, border: `1px solid ${s.bd}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: s.col, lineHeight: 1.6 }}>
+      <Ic n={type === 'danger' ? 'alertCircle' : type === 'warn' ? 'warning' : 'info'} sz={14} col={s.col} style={{ marginTop: 1, flexShrink: 0 }} />
+      <span>{children}</span>
+    </div>
+  );
+};
+
+/* ─── Lucide stroke icons ─────────────────────────────────────────────────── */
+const LI_PATHS = {
+  dashboard:     { d: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',              fill: true  },
+  paintbrush:    { d: 'M18.37 2.63 14 7l-1.59-1.59-2.83 2.83 1.59 1.59L7 14l-1.42 5.66L11.24 18 16 14l1.59 1.59 2.83-2.83-1.59-1.59 4.37-4.44zM7.49 16.51l-1 1-2-2 1-1', fill: false },
+  chartLine:     { d: 'M3 3v18h18M18 9l-5 5-4-4-3 3',                                      fill: false },
+  ticketPercent: { d: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zm9.5-1.5h.01M14 9l-4.5 6M9.5 14.5h.01', fill: false },
+  megaphone:     { d: 'M3 11l18-5v12L3 13v-2zm15 1a3 3 0 1 1-6 0',                         fill: false },
+  rocket:        { d: 'M13.13 22.19L11.5 18.36C13.07 17.78 14.54 17 15.9 16.09L13.13 22.19M5.64 12.5L1.81 10.87 7.91 8.1C7 9.46 6.22 10.93 5.64 12.5M19.22 4C19.5 4 19.75 4 20 4.05C20.55 9.19 18.5 14 15 17.43L6.57 9C10 5.5 14.81 3.45 19.22 4M8 12c0 0-4 2.69-4 5.31C4 19.9 6.1 22 8.69 22 11.31 22 14 18 14 18L8 12z', fill: true },
+  help:          { d: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-4h.01M12 8a2 2 0 0 1 2 2c0 1-1 1.5-1.5 2S12 13 12 14', fill: false },
+  chevronDown:   { d: 'M6 9l6 6 6-6',                                                       fill: false },
+};
+
+const Li = ({ n, sz = 20, col = 'currentColor', style: s = {} }) => {
+  const p = LI_PATHS[n];
+  if (!p) return null;
+  return (
+    <svg width={sz} height={sz} viewBox="0 0 24 24"
+      fill={p.fill ? col : 'none'}
+      stroke={p.fill ? 'none' : col}
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, display: 'block', ...s }}>
+      <path d={p.d} />
+    </svg>
+  );
+};
+
+/* ─── Layout shell ───────────────────────────────────────────────────────── */
+const NAV_TABS = [
+  { id: 'dashboard',  icon: 'dashboard',     label: 'Dashboard'  },
+  { id: 'design',     icon: 'paintbrush',    label: 'Design'     },
+  { id: 'analytics',  icon: 'chartLine',     label: 'Analytics'  },
+  { id: 'discounts',  icon: 'ticketPercent', label: 'Discounts'  },
+  { id: 'push',       icon: 'megaphone',     label: 'Push'       },
+  { id: 'releases',   icon: 'rocket',        label: 'Releases'   },
+];
+
+const SL = { 1: null, 2: 'Create test build', 3: 'Test build in progress', 4: 'Test build ready', 5: 'Release to stores', 6: 'Submission in progress', 7: 'Release live' };
+
+/* Milo button — gradient from Figma (#ff9572 → #fc401f) */
+const MiloBtn = () => (
+  <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #ffc1a9',
+    boxShadow: '0px 5px 8px -4px #fd5f3a, 0px 0px 0px 1px #ffc1a9', flexShrink: 0 }}>
+    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, #ff9572, #fc401f)', borderRadius: 12, pointerEvents: 'none' }} />
+    <div style={{ position: 'absolute', inset: 0, borderRadius: 12, pointerEvents: 'none',
+      boxShadow: 'inset 0px -2px 0px 0px #fd5f3a, inset 0px 2px 0px 0px rgba(253,95,58,0.4)' }} />
+    <button style={{
+      position: 'relative', display: 'flex', alignItems: 'center', gap: 6,
+      padding: '7px 12px', background: 'transparent', border: 'none', cursor: 'pointer',
+      fontFamily: 'Outfit, sans-serif', fontWeight: 500, fontSize: 14, color: '#fff', lineHeight: '18px',
+    }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275zM5 3v4M3 5h4M19 17v4M17 19h4" />
+      </svg>
+      Milo
+    </button>
+  </div>
+);
+
+const TopNav = ({ screen, goHome }) => (
+  <header style={{ background: '#fff', borderBottom: '1px solid #d1d5dc', flexShrink: 0 }}>
+    {/* Main nav bar: 64px */}
+    <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+
+      {/* Left: tabs */}
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0 }}>
+        {NAV_TABS.map(tab => {
+          const active = tab.id === 'releases';
+          return (
+            <button
+              key={tab.id}
+              onClick={tab.id === 'releases' ? goHome : undefined}
+              style={{
+                position: 'relative',
+                display: 'flex', alignItems: 'center',
+                gap: active ? 8 : 6,
+                height: '100%',
+                padding: active ? '10px 16px 12px' : '0 16px',
+                background: active ? '#ebf6ff' : 'transparent',
+                borderRadius: active ? 12 : 0,
+                border: 'none', cursor: 'pointer',
+                fontFamily: 'Outfit, sans-serif', fontWeight: 500, fontSize: 14, lineHeight: '18px',
+                color: active ? '#0033a0' : '#6a7282',
+                whiteSpace: 'nowrap',
+                transition: 'color .15s',
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.color = '#374151'; }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.color = '#6a7282'; }}
+            >
+              <Li n={tab.icon} sz={20} col="currentColor" />
+              {tab.label}
+              {active && (
+                <div style={{
+                  position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+                  width: 32, height: 4, background: '#0033a0',
+                  borderRadius: '4px 4px 0 0',
+                }} />
+              )}
+            </button>
+          );
+        })}
+
+        <div style={{ paddingLeft: 16 }}>
+          <MiloBtn />
+        </div>
+      </div>
+
+      {/* Right: help + avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+        <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24 }}>
+          <Li n="help" sz={24} col="#6a7282" />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #d1d5dc', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }}>
+          <div style={{ width: 32, height: 32, borderRight: '1px solid #d1d5dc', background: '#FDF2F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#BE185D', fontFamily: 'Outfit, sans-serif' }}>NF</span>
+          </div>
+          <div style={{ width: 24, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Li n="chevronDown" sz={14} col="#6a7282" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </header>
+);
+
+/* ─── Demo panel — floating controls (home screen only) ─────────────────── */
+const DemoPanel = ({ blocker, setBlocker, building, setBuilding, inReview, setInReview, rejected, setRejected, failed, setFailed, setupMode, setSetupMode, step1Done, setStep1Done, step2Done, setStep2Done, setupDone, setSetupDone }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const setupRows = [
+    { key: 'step1Done', val: step1Done, set: setStep1Done, label: 'Step 1 complete', desc: 'Developer accounts created' },
+    { key: 'step2Done', val: step2Done, set: setStep2Done, label: 'Step 2 complete', desc: 'Accounts connected to Studio' },
+    { key: 'setupDone', val: setupDone, set: setSetupDone, label: 'Setup complete',  desc: 'App configured on both stores' },
+  ];
+
+  const rows = [
+    {
+      key: 'blocker',
+      val: blocker, set: setBlocker,
+      label: 'Account blocker',
+      desc:  'iOS cert expired',
+    },
+    {
+      key: 'building',
+      val: building, set: setBuilding,
+      label: 'Build in progress',
+      desc:  'Active test build running',
+    },
+    {
+      key: 'inReview',
+      val: inReview, set: setInReview,
+      label: 'Release in review',
+      desc:  'v1.7.0 awaiting store approval',
+    },
+    {
+      key: 'rejected',
+      val: rejected, set: setRejected,
+      label: 'Build rejected',
+      desc:  'App Store rejected v1.7.0',
+    },
+    {
+      key: 'failed',
+      val: failed, set: setFailed,
+      label: 'Build failed',
+      desc:  'Android build failed at signing',
+    },
+  ];
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, left: 20, zIndex: 300,
+      background: '#1a1f2e', borderRadius: 12, overflow: 'hidden',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.18)',
+      minWidth: 228, fontFamily: 'Outfit, Inter, sans-serif',
+    }}>
+      {/* Header */}
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c85a2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+          </svg>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#7c85a2', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Demo controls</span>
+        </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c85a2" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform .18s', flexShrink: 0 }}>
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </button>
+
+      {/* Toggle rows */}
+      {!collapsed && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '8px 0 10px' }}>
+          {/* Mode switch */}
+          <div style={{ padding: '6px 14px 10px', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#e2e5ed', lineHeight: 1.3 }}>First-time setup</div>
+                <div style={{ fontSize: 11, color: '#5a6280', marginTop: 1 }}>No accounts connected yet</div>
+              </div>
+              <button
+                onClick={() => setSetupMode(!setupMode)}
+                style={{
+                  width: 34, height: 20, borderRadius: 99, border: 'none', flexShrink: 0,
+                  background: setupMode ? '#22c55e' : '#2e3448', cursor: 'pointer', position: 'relative',
+                  transition: 'background .2s',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: setupMode ? 16 : 3,
+                  width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                  transition: 'left .18s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
+              </button>
+            </div>
+          </div>
+          {/* Conditional rows */}
+          {(setupMode ? setupRows : rows).map((r) => (
+            <div key={r.key} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '7px 14px', gap: 12,
+            }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#e2e5ed', lineHeight: 1.3 }}>{r.label}</div>
+                <div style={{ fontSize: 11, color: '#5a6280', marginTop: 1 }}>{r.desc}</div>
+              </div>
+              <button
+                onClick={() => r.set(!r.val)}
+                style={{
+                  width: 34, height: 20, borderRadius: 99, border: 'none', flexShrink: 0,
+                  background: r.val ? '#3b82f6' : '#2e3448', cursor: 'pointer', position: 'relative',
+                  transition: 'background .2s',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: r.val ? 16 : 3,
+                  width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                  transition: 'left .18s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+const Modal = ({ onClose, children }) => (
+  <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div onClick={e => e.stopPropagation()} style={{ background: T.white, borderRadius: 16, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,21,64,0.18)', overflow: 'hidden' }}>
+      {children}
+    </div>
+  </div>
+);
+
+/* ─── Screen 0 — First-time setup ───────────────────────────────────────── */
+const SETUP_STEPS = ['Create accounts', 'Connect accounts', 'Configure app'];
+
+const S0 = ({ step1Done, step2Done, setupDone }) => {
+  const [hovBtn, setHovBtn] = useState(false);
+
+  const activeStep = setupDone ? 3 : step2Done ? 2 : step1Done ? 1 : 0;
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, letterSpacing: '0.2px' }}>Manage App Releases</h1>
+        <div style={{ position: 'relative' }}
+          onMouseEnter={() => setHovBtn(true)}
+          onMouseLeave={() => setHovBtn(false)}>
+          <BtnPrimary disabled>Create release</BtnPrimary>
+          {hovBtn && (
+            <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: '#1E2939', color: '#fff', fontSize: 11, fontWeight: 500, borderRadius: 7, padding: '7px 12px', whiteSpace: 'nowrap', zIndex: 100, lineHeight: 1.4 }}>
+              Complete setup to create releases
+              <div style={{ position: 'absolute', top: '100%', right: 16, width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1E2939' }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Empty platform cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        {[
+          { icon: 'apple',   col: T.textXlt, bg: '#F3F4F6', bd: T.border,  label: 'App Store'   },
+          { icon: 'android', col: T.textXlt, bg: '#F3F4F6', bd: T.border,  label: 'Google Play' },
+        ].map(p => (
+          <div key={p.label} style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: p.bg, border: `1px solid ${p.bd}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Ic n={p.icon} sz={18} col={p.col} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 4 }}>{p.label}</div>
+                  <div style={{ fontSize: 12, color: T.textXlt }}>Not connected</div>
+                </div>
+              </div>
+              <Badge status="Not set up" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Setup card */}
+      {!setupDone ? (
+        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          {/* Card header */}
+          <div style={{ padding: '16px 20px 14px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 3 }}>Set up Releases</div>
+            <div style={{ fontSize: 12, color: T.textLt }}>Complete these steps to start releasing your app to the App Store and Google Play.</div>
+          </div>
+
+          {/* Step progress bar */}
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {SETUP_STEPS.map((label, i) => {
+                const done   = i < activeStep;
+                const active = i === activeStep;
+                return (
+                  <React.Fragment key={label}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        background: done ? T.green : active ? T.ctaBg : T.border,
+                        border: active ? `2px solid ${T.ctaBg}` : 'none',
+                        boxSizing: 'border-box',
+                      }}>
+                        {done
+                          ? <Ic n="check" sz={13} col="#fff" />
+                          : <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#fff' : T.textLt }}>{i + 1}</span>
+                        }
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, color: done || active ? T.text : T.textXlt, whiteSpace: 'nowrap' }}>{label}</span>
+                    </div>
+                    {i < SETUP_STEPS.length - 1 && (
+                      <div style={{ flex: 1, height: 2, background: i < activeStep ? T.green : T.border, marginBottom: 18, marginLeft: 4, marginRight: 4 }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 1 — Create developer accounts */}
+          {activeStep === 0 && (
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>Create developer accounts</div>
+              <div style={{ fontSize: 12, color: T.textLt, marginBottom: 20, lineHeight: 1.6 }}>You'll need accounts on both stores to distribute your app. These are managed directly with Apple and Google — not through Studio.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {[
+                  { icon: 'apple',   col: T.text,    label: 'Apple Developer Program',  desc: 'Required to publish on the App Store. Costs $99/year.', link: 'developer.apple.com' },
+                  { icon: 'android', col: '#3DDC84', label: 'Google Play Console',       desc: 'Required to publish on Google Play. One-time $25 fee.',  link: 'play.google.com/console' },
+                ].map(item => (
+                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', border: `1px solid ${T.border}`, borderRadius: 10, background: T.pageBg }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: T.white, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Ic n={item.icon} sz={18} col={item.col} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 2 }}>{item.label}</div>
+                      <div style={{ fontSize: 12, color: T.textLt }}>{item.desc}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: T.blue, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {item.link} <Ic n="external" sz={12} col={T.blue} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: T.textLt, background: T.blue50, border: `1px solid ${T.blue100}`, borderRadius: 8, padding: '10px 14px', lineHeight: 1.6 }}>
+                Once you've created both accounts, toggle "Step 1 complete" in the demo panel to continue.
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 — Connect accounts */}
+          {activeStep === 1 && (
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>Connect your accounts</div>
+              <div style={{ fontSize: 12, color: T.textLt, marginBottom: 20, lineHeight: 1.6 }}>Grant Studio access to your developer accounts so we can manage builds and submissions on your behalf.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                {/* iOS */}
+                <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${T.border}`, background: T.pageBg }}>
+                    <Ic n="apple" sz={15} col={T.text} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>App Store Connect</span>
+                  </div>
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontSize: 12, color: T.textLt, marginBottom: 10, lineHeight: 1.6 }}>Generate an API key in App Store Connect and paste the credentials below.</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div>
+                        <FieldLabel>Issuer ID</FieldLabel>
+                        <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                      </div>
+                      <div>
+                        <FieldLabel>Key ID</FieldLabel>
+                        <Input placeholder="XXXXXXXXXX" />
+                      </div>
+                      <div>
+                        <FieldLabel>Private key (.p8 file)</FieldLabel>
+                        <div style={{ border: `1.5px dashed ${T.border}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center', cursor: 'pointer', background: T.pageBg }}>
+                          <div style={{ fontSize: 12, color: T.textLt }}>Drop .p8 file here or <span style={{ color: T.blue, fontWeight: 500 }}>browse</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Android */}
+                <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${T.border}`, background: T.pageBg }}>
+                    <Ic n="android" sz={15} col="#3DDC84" />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Google Play Console</span>
+                  </div>
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontSize: 12, color: T.textLt, marginBottom: 10, lineHeight: 1.6 }}>Create a service account in Google Cloud Console and upload the JSON key file.</div>
+                    <div>
+                      <FieldLabel>Service account JSON key</FieldLabel>
+                      <div style={{ border: `1.5px dashed ${T.border}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center', cursor: 'pointer', background: T.pageBg }}>
+                        <div style={{ fontSize: 12, color: T.textLt }}>Drop JSON key here or <span style={{ color: T.blue, fontWeight: 500 }}>browse</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: T.textLt, background: T.blue50, border: `1px solid ${T.blue100}`, borderRadius: 8, padding: '10px 14px', lineHeight: 1.6 }}>
+                Toggle "Step 2 complete" in the demo panel to proceed.
+              </div>
+            </div>
+          )}
+
+          {/* Step 3 — Configure app */}
+          {activeStep === 2 && (
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>Configuring your app</div>
+              <div style={{ fontSize: 12, color: T.textLt, marginBottom: 20, lineHeight: 1.6 }}>Studio is importing your app settings and metadata from both stores. This usually takes under a minute.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {[
+                  { icon: 'apple',   col: T.text,    label: 'App Store',   tasks: ['Fetching app metadata', 'Importing screenshots & assets', 'Syncing release history'] },
+                  { icon: 'android', col: '#3DDC84', label: 'Google Play', tasks: ['Fetching app metadata', 'Importing store listing', 'Syncing release history'] },
+                ].map(p => (
+                  <div key={p.label} style={{ border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${T.border}`, background: T.pageBg }}>
+                      <Ic n={p.icon} sz={15} col={p.col} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{p.label}</span>
+                    </div>
+                    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {p.tasks.map((task, ti) => (
+                        <div key={task} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 18, height: 18, borderRadius: '50%', background: T.blue50, border: `1px solid ${T.blue100}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.blue, display: 'block' }} className="pulse-dot" />
+                          </div>
+                          <span style={{ fontSize: 12, color: T.textMd }}>{task}</span>
+                          <span style={{ fontSize: 11, color: T.textXlt, marginLeft: 'auto' }}>In progress…</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: T.textLt, background: T.blue50, border: `1px solid ${T.blue100}`, borderRadius: 8, padding: '10px 14px', lineHeight: 1.6 }}>
+                Toggle "Setup complete" in the demo panel to see the finished state.
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Setup complete */
+        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: '32px 24px', textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: T.green50, border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+            <Ic n="checkCircle" sz={28} col={T.green} />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 6 }}>You're all set!</div>
+          <div style={{ fontSize: 13, color: T.textLt, marginBottom: 20, lineHeight: 1.6 }}>Both stores are connected and your app is configured. You're ready to create your first release.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+            {[
+              { icon: 'apple',   col: T.text,    label: 'App Store',   detail: 'Connected · v1.6.0 live' },
+              { icon: 'android', col: '#3DDC84', label: 'Google Play', detail: 'Connected · v1.6.0 live' },
+            ].map(p => (
+              <div key={p.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: `1px solid #BBF7D0`, borderRadius: 10, background: T.green50 }}>
+                <Ic n={p.icon} sz={16} col={p.col} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{p.label}</div>
+                  <div style={{ fontSize: 11, color: T.green }}>{p.detail}</div>
+                </div>
+                <Ic n="checkCircle" sz={16} col={T.green} style={{ marginLeft: 'auto' }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: T.textLt }}>Turn off "First-time setup" in the demo panel to see the full releases dashboard.</div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── Screen 1 — Release dashboard ──────────────────────────────────────── */
+const HIST = [
+  { v: 'v1.6.0', plat: 'iOS + Android', date: 'Apr 18, 2026', status: 'Live'      },
+  { v: 'v1.5.2', plat: 'Android',       date: 'Mar 31, 2026', status: 'Live'      },
+  { v: 'v1.5.1', plat: 'iOS',           date: 'Mar 15, 2026', status: 'Live'      },
+  { v: 'v1.5.0', plat: 'iOS + Android', date: 'Feb 28, 2026', status: 'Live'      },
+  { v: 'v1.4.3', plat: 'iOS + Android', date: 'Jan 12, 2026', status: 'Live'      },
+];
+
+const S1 = ({ go, blocker, building, inReview, rejected, failed }) => {
+  const [modal, setModal] = useState(null); // 'rejected' | 'failed' | null
+  return (
+  <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+
+    {/* Page header */}
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div>
+        <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, letterSpacing: '0.2px' }}>Manage App Releases</h1>
+      </div>
+      <ReleaseDropdown go={go} />
+    </div>
+
+    {/* Platform cards — static, always show current live state only */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+
+      {/* iOS */}
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20 }}>
+        {blocker && (
+          <div style={{ background: T.red50, border: `1px solid ${T.red100}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: T.red700 }}>
+            <Ic n="alertCircle" sz={13} col={T.red} style={{ marginTop: 1 }} />
+            <span>Your Apple Developer membership has expired. Renew it to continue releasing.&nbsp;
+              <a href="#" style={{ color: T.red, fontWeight: 600, textDecoration: 'none' }}>→ Renew on Apple Developer</a>
+            </span>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#F3F4F6', border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="apple" sz={18} col={T.text} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 6 }}>App Store</div>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ fontWeight: 400, color: T.textXlt }}>v1.6.0</span>
+                <span style={{ color: T.border, margin: '0 6px' }}>|</span>
+                <span style={{ color: T.textXlt, fontWeight: 400 }}>Released Apr 18, 2026</span>
+              </div>
+            </div>
+          </div>
+          <Badge status={blocker ? 'Failed' : 'Live'} />
+        </div>
+      </div>
+
+      {/* Android */}
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#F0FDF4', border: `1px solid #BBF7D0`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="android" sz={18} col="#3DDC84" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 6 }}>Google Play</div>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ fontWeight: 400, color: T.textXlt }}>v1.6.0</span>
+                <span style={{ color: T.border, margin: '0 6px' }}>|</span>
+                <span style={{ color: T.textXlt, fontWeight: 400 }}>Released Apr 18, 2026</span>
+              </div>
+            </div>
+          </div>
+          <Badge status="Live" />
+        </div>
+      </div>
+    </div>
+
+    {/* In-progress card */}
+    {/* In-progress card — iOS shows if inReview && not rejected, Android shows if building && not failed */}
+    {((inReview && !rejected) || (building && !failed)) && (() => {
+      const showIos = inReview && !rejected;
+      const showAnd = building && !failed;
+      return (
+        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: '16px 20px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>In progress</span>
+            <a href="#" onClick={e => { e.preventDefault(); go(inReview ? 6 : 3); }} style={{ fontSize: 12, fontWeight: 500, color: T.blue, textDecoration: 'none' }}>View details →</a>
+          </div>
+          {showIos && (
+            <div style={{ marginBottom: showAnd ? 16 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Ic n="apple" sz={15} col={T.text} />
+                <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>App Store</span>
+                <span style={{ fontSize: 12, color: T.textXlt }}>v1.7.0</span>
+                <Badge status="In Review" />
+                <span style={{ fontSize: 11, color: T.textLt, marginLeft: 'auto' }}>Submitted Apr 30 · Apple review typically takes 24–48h</span>
+              </div>
+              <StepBar pct={85} color="#D97706" activeIdx={3} />
+            </div>
+          )}
+          {showIos && showAnd && <div style={{ height: 1, background: T.border, marginBottom: 16 }} />}
+          {showAnd && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Ic n="android" sz={15} col="#3DDC84" />
+                <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>Google Play</span>
+                <span style={{ fontSize: 12, color: T.textXlt }}>v1.7.0</span>
+                <Badge status="Signing" />
+                <span style={{ fontSize: 11, color: T.textLt, marginLeft: 'auto' }}>Started 8 minutes ago · Usually 20–30 min</span>
+              </div>
+              <StepBar pct={50} color="#7C3AED" activeIdx={1} />
+            </div>
+          )}
+        </div>
+      );
+    })()}
+
+    {/* Error card — rejected = iOS App Store, failed = Android Google Play */}
+    {(rejected || failed) && (
+      <div style={{ background: '#FFF8F8', border: `1px solid ${T.red100}`, borderRadius: 12, padding: '16px 20px', marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+            {rejected && failed ? 'v1.7.0 action required' : rejected ? 'v1.7.0 rejected' : 'v1.7.0 build failed'}
+          </span>
+        </div>
+        {rejected && (
+          <div style={{ marginBottom: failed ? 16 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Ic n="apple" sz={15} col={T.text} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>App Store</span>
+              <Badge status="Rejected" />
+              <span style={{ fontSize: 11, color: T.textLt, marginLeft: 'auto' }}>Guideline 3.1.1 · In-app purchase issue</span>
+              <a href="#" onClick={e => { e.preventDefault(); setModal('rejected'); }} style={{ fontSize: 12, fontWeight: 500, color: T.red, textDecoration: 'none', whiteSpace: 'nowrap', marginLeft: 8 }}>Learn more →</a>
+            </div>
+          </div>
+        )}
+        {rejected && failed && <div style={{ height: 1, background: T.border, marginBottom: 16 }} />}
+        {failed && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Ic n="android" sz={15} col="#3DDC84" />
+            <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>Google Play</span>
+            <Badge status="Failed" />
+            <span style={{ fontSize: 11, color: T.textLt, marginLeft: 'auto' }}>Code signing failed · Certificate expired</span>
+            <a href="#" onClick={e => { e.preventDefault(); setModal('failed'); }} style={{ fontSize: 12, fontWeight: 500, color: T.red, textDecoration: 'none', whiteSpace: 'nowrap', marginLeft: 8 }}>Learn more →</a>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Release history */}
+    <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Release history</span>
+        <span style={{ fontSize: 12, color: T.textXlt }}>Last 5 releases</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: '#F9FAFB' }}>
+            {['Version', 'Platform', 'Date', 'Status'].map(h => (
+              <th key={h} style={{ textAlign: 'left', padding: '10px 20px', fontSize: 11, fontWeight: 600, color: T.textLt, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {HIST.map((r, i) => (
+            <tr key={i} style={{ borderTop: `1px solid ${T.border}` }}>
+              <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: T.text }}>{r.v}</td>
+              <td style={{ padding: '12px 20px', fontSize: 13, color: T.textMd }}>{r.plat}</td>
+              <td style={{ padding: '12px 20px', fontSize: 13, color: T.textMd }}>{r.date}</td>
+              <td style={{ padding: '12px 20px' }}><Badge status={r.status} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Rejected modal */}
+    {modal === 'rejected' && (
+      <Modal onClose={() => setModal(null)}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: T.red50, border: `1px solid ${T.red100}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="alertCircle" sz={16} col={T.red} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Build rejected by App Store</div>
+              <div style={{ fontSize: 12, color: T.textLt, marginTop: 2 }}>v1.7.0 · Reviewed Apr 30, 2026</div>
+            </div>
+          </div>
+          <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: T.textLt, fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.textLt, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Guideline violated</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>3.1.1 — In-App Purchase</div>
+            <div style={{ fontSize: 13, color: T.textMd, lineHeight: 1.6 }}>Your app offers digital goods or services (premium filters) that must be purchased through Apple's in-app purchase system. External payment links are not permitted.</div>
+          </div>
+          <div style={{ background: T.red50, border: `1px solid ${T.red100}`, borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.red, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Reviewer note</div>
+            <div style={{ fontSize: 12, color: T.red700, lineHeight: 1.6 }}>"We noticed that your app includes a 'Pay via website' button on the Premium Filters screen that directs users outside the app to complete a purchase. This violates App Store Review Guideline 3.1.1."</div>
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.textLt, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Steps to resolve</div>
+            {['Remove or disable the external payment link on the Premium Filters screen.', 'Implement the purchase flow using StoreKit (iOS in-app purchase API).', 'Resubmit once the change is live in your build.'].map((step, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: T.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 11, fontWeight: 600, color: T.textLt }}>{i + 1}</div>
+                <div style={{ fontSize: 13, color: T.textMd, lineHeight: 1.5 }}>{step}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setModal(null); go(5); }} style={{ width: '100%', padding: '10px 0', background: T.ctaBg, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit, Inter, sans-serif' }}>
+            Fix &amp; resubmit →
+          </button>
+        </div>
+      </Modal>
+    )}
+
+    {/* Failed modal */}
+    {modal === 'failed' && (
+      <Modal onClose={() => setModal(null)}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: T.red50, border: `1px solid ${T.red100}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="alertCircle" sz={16} col={T.red} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Build failed — code signing error</div>
+              <div style={{ fontSize: 12, color: T.textLt, marginTop: 2 }}>Google Play · v1.7.0 · Build #42 · May 1, 2026 at 2:14 PM</div>
+            </div>
+          </div>
+          <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: T.textLt, fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.textLt, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Error</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>Code Signing Failed</div>
+            <div style={{ fontSize: 13, color: T.textMd, lineHeight: 1.6 }}>The Android build could not be signed because the keystore certificate associated with this app has expired. A valid keystore is required to submit to Google Play.</div>
+          </div>
+          <div style={{ background: '#1E2939', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: '#7c85a2', marginBottom: 6, fontFamily: 'Outfit, sans-serif', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Build log</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.7, fontFamily: 'monospace' }}>
+              <div>❯ Assembling release APK</div>
+              <div>❯ Running signing step...</div>
+              <div style={{ color: '#f87171' }}>✗ error: Keystore "nykaa-fashion-release.keystore" has expired.</div>
+              <div style={{ color: '#f87171' }}>✗ Code signing failed. Update your keystore and retry.</div>
+            </div>
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.textLt, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Steps to resolve</div>
+            {['Generate a new release keystore in your Android project settings.', 'Upload the updated keystore to Studio under App Settings → Android Signing.', 'Retry the build from Studio.'].map((step, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: T.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 11, fontWeight: 600, color: T.textLt }}>{i + 1}</div>
+                <div style={{ fontSize: 13, color: T.textMd, lineHeight: 1.5 }}>{step}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <a href="#" style={{ flex: 1, padding: '10px 0', background: T.muted, color: T.text, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Outfit, Inter, sans-serif' }}>
+              App Settings →
+            </a>
+            <button onClick={() => { setModal(null); go(3); }} style={{ flex: 1, padding: '10px 0', background: T.ctaBg, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit, Inter, sans-serif' }}>
+              Retry build →
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+  </div>
+  );
+};
+
+/* ─── Screen 2 — Create test build ──────────────────────────────────────── */
+const S2 = ({ go }) => {
+  const [plat, setPlat] = useState('both');
+  const opts = [
+    { id: 'both',    label: 'Both',         desc: 'iOS (TestFlight) + Android (APK)' },
+    { id: 'ios',     label: 'iOS only',     desc: 'IPA via TestFlight'               },
+    { id: 'android', label: 'Android only', desc: 'APK direct download'              },
+  ];
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 600, margin: '0 auto' }}>
+      <BtnGhost onClick={() => go(1)} style={{ padding: '4px 0', marginBottom: 18, color: T.textLt }}>
+        <Ic n="chevronRight" sz={13} col={T.textXlt} style={{ transform: 'rotate(180deg)' }} />
+        Back to releases
+      </BtnGhost>
+
+      <h1 style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: 4, letterSpacing: '0.1px' }}>Create test build</h1>
+      <p style={{ fontSize: 13, color: T.textLt, marginBottom: 24 }}>Generate a build to test on a real device before releasing to the stores.</p>
+
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+        <SecHead>Platform</SecHead>
+        <FieldLabel>Select which platforms to build for</FieldLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {opts.map(o => <RadioCard key={o.id} checked={plat === o.id} onChange={() => setPlat(o.id)} label={o.label} desc={o.desc} />)}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <Note>Test builds don't go to the App Store or Google Play. They are for internal testing only. Builds usually take 20–30 minutes.</Note>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <BtnPrimary onClick={() => go(3)}>Build</BtnPrimary>
+        <BtnGhost onClick={() => go(1)}>Cancel</BtnGhost>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Screen 3 — Test build in progress ─────────────────────────────────── */
+const S3 = ({ go, err, setErr }) => {
+  const steps = [
+    { id: 'q', label: 'Queued',   done: true,  active: false },
+    { id: 'b', label: 'Building', done: false, active: !err  },
+    { id: 's', label: 'Signing',  done: false, active: false },
+    { id: 'd', label: 'Done',     done: false, active: false },
+  ];
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 600, margin: '0 auto' }}>
+      <BtnGhost onClick={() => go(1)} style={{ padding: '4px 0', marginBottom: 18, color: T.textLt }}>
+        <Ic n="chevronRight" sz={13} col={T.textXlt} style={{ transform: 'rotate(180deg)' }} />
+        Back to releases
+      </BtnGhost>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: T.text, letterSpacing: '0.1px' }}>Test build in progress</h1>
+        <DemoToggle label="Demo: build failed" on={err} onChange={setErr} />
+      </div>
+
+      {err ? (
+        <div style={{ background: T.red50, border: `1px solid ${T.red100}`, borderRadius: 12, padding: 20 }}>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.red100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="close" sz={16} col={T.red} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: T.red900, marginBottom: 8 }}>Build failed</div>
+              <p style={{ fontSize: 13, color: T.red700, lineHeight: 1.7, marginBottom: 16 }}>
+                The build failed because the signing certificate could not be found. This usually means the certificate has expired or been revoked in your Apple Developer account.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <BtnPrimary onClick={() => setErr(false)} style={{ background: T.red, fontSize: 12, padding: '6px 12px' }}>Try again</BtnPrimary>
+                <BtnGhost style={{ fontSize: 12 }}>Contact support →</BtnGhost>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 3 }}>Building iOS + Android</div>
+                <div style={{ fontSize: 12, color: T.textLt }}>Started 8 minutes ago · Usually takes 20–30 minutes</div>
+              </div>
+              <span style={{ fontSize: 20, fontWeight: 700, color: T.blue }}>58%</span>
+            </div>
+            <div style={{ margin: '16px 0' }}><ProgBar pct={58} /></div>
+            <Steps steps={steps} />
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <Note>We'll email you when the build is ready. You can safely close this page.</Note>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <BtnGhost onClick={() => go(1)}>Cancel build</BtnGhost>
+            <BtnGhost onClick={() => go(4)} style={{ color: T.blue }}>Skip to result (demo) →</BtnGhost>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/* ─── Screen 4 — Test build ready ───────────────────────────────────────── */
+const S4 = ({ go }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 600, margin: '0 auto' }}>
+      <BtnGhost onClick={() => go(1)} style={{ padding: '4px 0', marginBottom: 18, color: T.textLt }}>
+        <Ic n="chevronRight" sz={13} col={T.textXlt} style={{ transform: 'rotate(180deg)' }} />
+        Back to releases
+      </BtnGhost>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.green50, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Ic n="checkCircle" sz={20} col={T.green} />
+        </div>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: T.text, letterSpacing: '0.1px' }}>Test build ready</h1>
+      </div>
+      <p style={{ fontSize: 13, color: T.textLt, marginBottom: 24 }}>Install it on a real device and test before you release to the stores.</p>
+
+      {/* Build meta */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        {[['Version', 'v1.7.0 (build 42)'], ['Built', 'May 1, 2026, 2:14 PM'], ['Platform', 'iOS + Android']].map(([k, v]) => (
+          <div key={k} style={{ flex: 1, background: '#F9FAFB', border: `1px solid ${T.border}`, borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: T.textXlt, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>{k}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* iOS */}
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 18, marginBottom: 12 }}>
+        <SecHead>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Ic n="apple" sz={13} col={T.textMd} />iOS — TestFlight
+          </span>
+        </SecHead>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F9FAFB', border: `1px solid ${T.border}`, borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+          <span style={{ fontSize: 12, color: T.textLt, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            https://testflight.apple.com/join/nykaa-fashion-1d4e9
+          </span>
+          <button onClick={copy} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500, color: T.blue, background: T.blue50, border: `1px solid ${T.blue100}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+            <Ic n="copy" sz={11} col={T.blue} />{copied ? 'Copied!' : 'Copy link'}
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: T.textLt, lineHeight: 1.6 }}>Testers need the <strong>TestFlight app</strong> installed on their iPhone to join the beta.</p>
+      </div>
+
+      {/* Android */}
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 18, marginBottom: 24 }}>
+        <SecHead>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Ic n="android" sz={13} col="#3DDC84" />Android — APK download
+          </span>
+        </SecHead>
+        <div style={{ marginBottom: 10 }}>
+          <BtnOutline icon="download">Download APK (v1.7.0)</BtnOutline>
+        </div>
+        <p style={{ fontSize: 12, color: T.textLt, lineHeight: 1.6 }}>Testers need to enable <strong>"Install from unknown sources"</strong> on their Android device first.</p>
+      </div>
+
+      <ReleaseDropdown go={go} />
+    </div>
+  );
+};
+
+/* ─── Platform enable/disable toggle ────────────────────────────────────── */
+const PlatToggle = ({ on, onChange, label }) => (
+  <button onClick={onChange} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+    <span style={{ fontSize: 12, fontWeight: 500, color: on ? T.text : T.textLt, transition: 'color .15s' }}>{label}</span>
+    <div style={{ width: 38, height: 22, borderRadius: 99, flexShrink: 0, background: on ? T.ctaBg : '#D1D5DB', position: 'relative', transition: 'background .2s' }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 18 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.22)', transition: 'left .18s', display: 'block' }} />
+    </div>
+  </button>
+);
+
+/* ─── Screen 5 — Production release form ────────────────────────────────── */
+const S5 = ({ go }) => {
+  const [iosOn,        setIosOn]      = useState(true);
+  const [andOn,        setAndOn]      = useState(true);
+  const [iosNotes,     setIosNotes]   = useState('');
+  const [andNotes,     setAndNotes]   = useState('');
+  const [iosOpen,      setIosOpen]    = useState(true);
+  const [andOpen,      setAndOpen]    = useState(true);
+  const [iosVer,       setIosVer]     = useState('1.7.0');
+  const [iosVerAuto,   setIosVerAuto] = useState(true);
+  const [andVer,       setAndVer]     = useState('1.7.0');
+  const [andVerAuto,   setAndVerAuto] = useState(true);
+
+  const VERSION_RE = /^\d+\.\d+\.\d+$/;
+  const iosVerValid = VERSION_RE.test(iosVer);
+  const andVerValid = VERSION_RE.test(andVer);
+
+  const IOS_LIMIT = 4000, AND_LIMIT = 500;
+
+  const iosChecks = [
+    { label: 'Version valid (v1.7.0)',       pass: true },
+    { label: 'Credentials verified',          pass: true },
+    { label: 'No build currently in review',  pass: true },
+    { label: 'Screenshots meet spec',         pass: true },
+    { label: 'Release notes filled in',       pass: iosNotes.trim().length > 0 },
+  ];
+  const andChecks = [
+    { label: 'Version valid (v1.7.0)',        pass: true },
+    { label: 'Credentials verified',           pass: true },
+    { label: 'No build currently in review',   pass: true },
+    { label: 'Screenshots meet spec',          pass: true },
+    { label: 'Release notes filled in',        pass: andNotes.trim().length > 0 },
+  ];
+
+  const iosReady   = !iosOn || iosChecks.every(c => c.pass);
+  const andReady   = !andOn || andChecks.every(c => c.pass);
+  const noneOn     = !iosOn && !andOn;
+  const canConfirm = !noneOn && iosReady && andReady;
+  const disabledMsg = noneOn
+    ? 'Enable at least one platform to release'
+    : !canConfirm
+    ? 'Fill in release notes for all enabled platforms'
+    : null;
+
+  /* Reusable inline renderers (no hooks — safe to define inside component) */
+  const renderChecklist = checks => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {checks.map((c, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <div style={{ width: 17, height: 17, borderRadius: '50%', flexShrink: 0, background: c.pass ? T.green50 : T.pageBg, border: `1.5px solid ${c.pass ? '#86efac' : T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {c.pass ? <Ic n="check" sz={9} col={T.green} /> : <span style={{ width: 4, height: 4, borderRadius: '50%', background: T.textXlt, display: 'block' }} />}
+          </div>
+          <span style={{ fontSize: 12, color: c.pass ? T.textMd : T.textLt }}>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  /* Subtle colour tints for each mock screen */
+  const SCREEN_TINTS = ['#EEF2FF','#F0FDF4','#FFF7ED','#FDF4FF','#EFF6FF'];
+
+  const renderScreenshots = () => (
+    <div style={{ display: 'flex', gap: 10 }}>
+      {[1,2,3,4,5].map((n, i) => (
+        <div key={n} style={{
+          flex: '1 1 0', minWidth: 0,
+          aspectRatio: '9 / 19',
+          borderRadius: 12,
+          background: SCREEN_TINTS[i],
+          border: `1px solid ${T.border}`,
+          overflow: 'hidden',
+          position: 'relative',
+          cursor: 'pointer',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Status bar */}
+          <div style={{ height: 12, background: 'rgba(0,0,0,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 3 }}>
+            <div style={{ width: 18, height: 3, borderRadius: 99, background: 'rgba(0,0,0,0.15)' }} />
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
+              {[8,5,3].map((w, j) => <div key={j} style={{ width: w, height: 3, borderRadius: 99, background: 'rgba(0,0,0,0.15)' }} />)}
+            </div>
+          </div>
+          {/* Content placeholder rows */}
+          <div style={{ flex: 1, padding: '8px 7px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ height: '38%', borderRadius: 6, background: 'rgba(0,0,0,0.07)' }} />
+            <div style={{ height: 5, borderRadius: 99, background: 'rgba(0,0,0,0.08)', width: '70%' }} />
+            <div style={{ height: 4, borderRadius: 99, background: 'rgba(0,0,0,0.05)', width: '50%' }} />
+            <div style={{ height: 4, borderRadius: 99, background: 'rgba(0,0,0,0.05)', width: '60%' }} />
+            <div style={{ marginTop: 2, height: '28%', borderRadius: 6, background: 'rgba(0,0,0,0.06)' }} />
+            <div style={{ height: 4, borderRadius: 99, background: 'rgba(0,0,0,0.05)', width: '45%' }} />
+          </div>
+          {/* Bottom nav bar */}
+          <div style={{ height: 14, background: 'rgba(0,0,0,0.05)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '0 6px' }}>
+            {[...Array(4)].map((_, j) => <div key={j} style={{ width: 10, height: 6, borderRadius: 3, background: 'rgba(0,0,0,0.12)' }} />)}
+          </div>
+          {/* Hover overlay with label */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 18 }}>
+            <span style={{ fontSize: 8, fontWeight: 600, color: 'rgba(0,0,0,0.35)', letterSpacing: '0.03em' }}>Screen {n}</span>
+          </div>
+        </div>
+      ))}
+      {/* Add slot */}
+      <div style={{
+        flex: '1 1 0', minWidth: 0,
+        aspectRatio: '9 / 19',
+        borderRadius: 12,
+        border: `1.5px dashed ${T.border}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 6, cursor: 'pointer', background: T.pageBg,
+        transition: 'background .15s, border-color .15s',
+      }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', background: T.border, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 18, color: T.textLt, lineHeight: 1 }}>+</span>
+        </div>
+        <span style={{ fontSize: 9, color: T.textXlt, fontWeight: 500 }}>Add</span>
+      </div>
+    </div>
+  );
+
+  const AppIconRow = ({ spec }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ width: 54, height: 54, borderRadius: 12, background: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)', border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 22 }}>👗</div>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: T.text }}>nykaa-fashion-icon.png</div>
+        <div style={{ fontSize: 11, color: T.textLt }}>{spec} · PNG</div>
+        <button style={{ fontSize: 11, color: T.blue, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 3 }}>Replace</button>
+      </div>
+    </div>
+  );
+
+  /* Summary mini-row helper */
+  const SumRow = ({ ok: done, label }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div style={{ width: 14, height: 14, borderRadius: '50%', background: done ? T.green50 : T.pageBg, border: `1px solid ${done ? '#86efac' : T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {done ? <Ic n="check" sz={8} col={T.green} /> : <span style={{ width: 3, height: 3, borderRadius: '50%', background: T.textXlt, display: 'block' }} />}
+      </div>
+      <span style={{ fontSize: 11, color: done ? T.textMd : T.textLt }}>{label}</span>
+    </div>
+  );
+
+  /* Shared listing field row */
+  const LimitField = ({ label, value, limit, rows }) => (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+        <FieldLabel>{label}</FieldLabel>
+        <span style={{ fontSize: 11, color: T.textXlt }}>{limit.toLocaleString()} chars</span>
+      </div>
+      <Input value={value} onChange={() => {}} rows={rows} />
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 1020, margin: '0 auto' }}>
+
+      {/* Back + title */}
+      <BtnGhost onClick={() => go(1)} style={{ padding: '4px 0', marginBottom: 18, color: T.textLt }}>
+        <Ic n="chevronRight" sz={13} col={T.textXlt} style={{ transform: 'rotate(180deg)' }} />
+        Back to releases
+      </BtnGhost>
+      <h1 style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: 4, letterSpacing: '0.1px' }}>Release to stores</h1>
+      <p style={{ fontSize: 13, color: T.textLt, marginBottom: 24 }}>Configure each platform independently. Toggle off any platform you don't want to release on.</p>
+
+      {/* Version banner */}
+      <div style={{ background: T.blue50, border: `1px solid ${T.blue100}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 12, color: T.ctaBg }}>
+        <Ic n="info" sz={13} col={T.blue} />
+        This release will be <strong style={{ margin: '0 3px' }}>version 1.7.0</strong> — auto-set by AppBrew. Applies to both platforms.
+      </div>
+
+      {/* Two-column layout */}
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+
+        {/* ── Left: platform cards ── */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* ═══ iOS Card ═══ */}
+          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', opacity: 1, transition: 'opacity .2s' }}>
+
+            {/* Card header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: `1px solid ${T.border}`, background: iosOn ? T.white : '#FAFAFA' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: '#F3F4F6', border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Ic n="apple" sz={18} col={T.text} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: T.text }}>App Store</div>
+                <div style={{ fontSize: 12, color: T.textLt }}>iOS · TestFlight & production</div>
+              </div>
+              <PlatToggle on={iosOn} onChange={() => setIosOn(o => !o)} label="Release on iOS" />
+            </div>
+
+            {/* Card body */}
+            <div style={{ padding: 20, opacity: iosOn ? 1 : 0.38, pointerEvents: iosOn ? 'auto' : 'none', transition: 'opacity .2s' }}>
+
+              {/* Version field */}
+              <div style={{ marginBottom: 20 }}>
+                <FieldLabel>Version</FieldLabel>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    value={iosVer}
+                    onChange={e => { setIosVer(e.target.value); setIosVerAuto(false); }}
+                    style={{
+                      width: '100%', border: `1px solid ${!iosVerAuto && !iosVerValid ? T.red : T.border}`,
+                      borderRadius: 8, padding: '9px 12px', paddingRight: iosVerAuto ? 88 : 12,
+                      fontSize: 13, color: T.text, outline: 'none', background: T.white,
+                      fontFamily: 'Outfit, Inter, sans-serif', lineHeight: 1.5,
+                    }}
+                  />
+                  {iosVerAuto && (
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 500, color: T.green, background: T.green50, border: `1px solid #BBF7D0`, borderRadius: 99, padding: '2px 8px', pointerEvents: 'none' }}>Auto-set</span>
+                  )}
+                </div>
+                {!iosVerAuto && !iosVerValid
+                  ? <p style={{ fontSize: 11, color: T.red, marginTop: 5 }}>Version must follow the format 1.0.0</p>
+                  : <p style={{ fontSize: 11, color: T.textXlt, marginTop: 5 }}>Auto-incremented from 1.6.0. Only edit if you have a specific reason to.</p>
+                }
+              </div>
+
+              <div style={{ height: 1, background: T.border, marginBottom: 20 }} />
+
+              {/* Release notes */}
+              <div style={{ marginBottom: 20 }}>
+                <SecHead>Release notes <span style={{ color: T.red, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: 13 }}>*</span></SecHead>
+                <FieldLabel>What's new in this version for iOS users</FieldLabel>
+                <Input value={iosNotes} onChange={e => setIosNotes(e.target.value)}
+                  placeholder="e.g. Faster checkout, improved product discovery, new wishlist features…" rows={4} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                  <span style={{ fontSize: 11, color: iosNotes.length > IOS_LIMIT ? T.red : T.textXlt }}>
+                    {iosNotes.length.toLocaleString()} / {IOS_LIMIT.toLocaleString()} chars
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: T.border, marginBottom: 20 }} />
+
+              {/* App Store listing accordion */}
+              <div style={{ marginBottom: 20 }}>
+                <button onClick={() => setIosOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 14px', fontFamily: 'Outfit, Inter, sans-serif' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>App Store listing</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: T.green, background: T.green50, border: `1px solid #BBF7D0`, borderRadius: 99, padding: '2px 8px' }}>Pre-filled</span>
+                </button>
+                {iosOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <LimitField label="App title" value="Nykaa Fashion — Shopping" limit={30} />
+                    <LimitField label="Subtitle" value="Trending Styles at Best Prices" limit={30} />
+                    <LimitField label="Description" value={"Shop from India's largest fashion destination. Discover trendy clothing, footwear, accessories and more from 5000+ brands."} limit={4000} rows={3} />
+                    <LimitField label="Keywords" value="fashion, shopping, clothing, style, trends, apparel" limit={100} />
+                    <div style={{ marginBottom: 8 }}>
+                      <FieldLabel>Screenshots <span style={{ color: T.textXlt }}>· 1242×2688px · 5 uploaded</span></FieldLabel>
+                      {renderScreenshots()}
+                    </div>
+                    <div>
+                      <FieldLabel>App icon <span style={{ color: T.textXlt }}>· 1024×1024px</span></FieldLabel>
+                      <AppIconRow spec="1024×1024px" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ height: 1, background: T.border, marginBottom: 20 }} />
+
+              {/* iOS checklist */}
+              <div>
+                <SecHead>Pre-submission checklist</SecHead>
+                {renderChecklist(iosChecks)}
+              </div>
+            </div>
+          </div>
+
+          {/* ═══ Android Card ═══ */}
+          <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+
+            {/* Card header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: `1px solid ${T.border}`, background: andOn ? T.white : '#FAFAFA' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: '#F0FDF4', border: `1px solid #BBF7D0`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Ic n="android" sz={18} col="#3DDC84" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: T.text }}>Google Play</div>
+                <div style={{ fontSize: 12, color: T.textLt }}>Android · Internal & production track</div>
+              </div>
+              <PlatToggle on={andOn} onChange={() => setAndOn(o => !o)} label="Release on Android" />
+            </div>
+
+            {/* Card body */}
+            <div style={{ padding: 20, opacity: andOn ? 1 : 0.38, pointerEvents: andOn ? 'auto' : 'none', transition: 'opacity .2s' }}>
+
+              {/* Version field */}
+              <div style={{ marginBottom: 20 }}>
+                <FieldLabel>Version</FieldLabel>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    value={andVer}
+                    onChange={e => { setAndVer(e.target.value); setAndVerAuto(false); }}
+                    style={{
+                      width: '100%', boxSizing: 'border-box', border: `1px solid ${!andVerAuto && !andVerValid ? T.red : T.border}`,
+                      borderRadius: 8, padding: '9px 12px', paddingRight: andVerAuto ? 88 : 12,
+                      fontSize: 13, color: T.text, outline: 'none', background: T.white,
+                      fontFamily: 'Outfit, Inter, sans-serif', lineHeight: 1.5,
+                    }}
+                  />
+                  {andVerAuto && (
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 500, color: T.green, background: T.green50, border: `1px solid #BBF7D0`, borderRadius: 99, padding: '2px 8px', pointerEvents: 'none' }}>Auto-set</span>
+                  )}
+                </div>
+                {!andVerAuto && !andVerValid
+                  ? <p style={{ fontSize: 11, color: T.red, marginTop: 5, marginBottom: 0 }}>Version must follow the format 1.0.0</p>
+                  : <p style={{ fontSize: 11, color: T.textXlt, marginTop: 5, marginBottom: 0 }}>Auto-incremented from 1.6.0. Only edit if you have a specific reason to.</p>
+                }
+              </div>
+
+              <div style={{ height: 1, background: T.border, marginBottom: 20 }} />
+
+              {/* Release notes */}
+              <div style={{ marginBottom: 20 }}>
+                <SecHead>Release notes <span style={{ color: T.red, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: 13 }}>*</span></SecHead>
+                <FieldLabel>What's new in this version for Android users</FieldLabel>
+                <Input value={andNotes} onChange={e => setAndNotes(e.target.value)}
+                  placeholder="e.g. Faster checkout, improved product discovery, new wishlist features…" rows={4} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                  <span style={{ fontSize: 11, color: andNotes.length > AND_LIMIT ? T.red : T.textXlt }}>
+                    {andNotes.length} / {AND_LIMIT} chars{andNotes.length > AND_LIMIT ? ' — will be trimmed' : ''}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: T.border, marginBottom: 20 }} />
+
+              {/* Google Play listing accordion */}
+              <div style={{ marginBottom: 20 }}>
+                <button onClick={() => setAndOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 14px', fontFamily: 'Outfit, Inter, sans-serif' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Google Play listing</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: T.green, background: T.green50, border: `1px solid #BBF7D0`, borderRadius: 99, padding: '2px 8px' }}>Pre-filled</span>
+                </button>
+                {andOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <LimitField label="App title" value="Nykaa Fashion — Online Shopping App" limit={50} />
+                    <LimitField label="Short description" value={"India's largest fashion app — 5000+ brands, best prices"} limit={80} />
+                    <LimitField label="Description" value={"Shop from India's largest fashion destination. Discover trendy clothing, footwear, accessories and more from 5000+ brands."} limit={4000} rows={3} />
+                    <div>
+                      <FieldLabel>Feature graphic <span style={{ color: T.textXlt }}>· 1024×500px</span></FieldLabel>
+                      <div style={{ height: 80, borderRadius: 8, background: 'linear-gradient(135deg, #1E2939 0%, #0033A0 100%)', border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>nykaa-fashion-feature.png · 1024×500px</span>
+                        <button style={{ position: 'absolute', right: 12, fontSize: 11, fontWeight: 500, color: '#fff', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Replace</button>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <FieldLabel>Screenshots <span style={{ color: T.textXlt }}>· 1080×1920px · 5 uploaded</span></FieldLabel>
+                      {renderScreenshots()}
+                    </div>
+                    <div>
+                      <FieldLabel>App icon <span style={{ color: T.textXlt }}>· 512×512px</span></FieldLabel>
+                      <AppIconRow spec="512×512px" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ height: 1, background: T.border, marginBottom: 20 }} />
+
+              {/* Android checklist */}
+              <div>
+                <SecHead>Pre-submission checklist</SecHead>
+                {renderChecklist(andChecks)}
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 48 }}>
+            <BtnPrimary disabled={!canConfirm} onClick={() => canConfirm && go(6)}>Confirm release</BtnPrimary>
+            <BtnGhost onClick={() => go(1)}>Cancel</BtnGhost>
+            {disabledMsg && <span style={{ fontSize: 12, color: T.textXlt }}>{disabledMsg}</span>}
+          </div>
+        </div>
+
+        {/* ── Right: summary card (sticky) ── */}
+        <div style={{ width: 256, flexShrink: 0, position: 'sticky', top: 20, background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+
+          {/* Header */}
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Summary</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: T.textXlt }}>v1.7.0</span>
+          </div>
+
+          {/* iOS section */}
+          <div style={{ padding: '16px 18px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+              <Ic n="apple" sz={13} col={T.text} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>App Store — iOS</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: iosOn ? '#0033A0' : T.textLt, background: iosOn ? T.blue50 : T.pageBg, border: `1px solid ${iosOn ? T.blue100 : T.border}`, borderRadius: 99, padding: '1px 8px' }}>
+                {iosOn ? 'Enabled' : 'Skipped'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, paddingLeft: 2 }}>
+              <SumRow ok={iosNotes.trim().length > 0} label={iosNotes.trim() ? 'Release notes filled' : 'Release notes empty'} />
+              <SumRow ok={iosChecks.filter(c => c.pass).length === iosChecks.length} label={`Checklist: ${iosChecks.filter(c => c.pass).length}/${iosChecks.length} passed`} />
+              <SumRow ok={true} label="Store listing pre-filled" />
+            </div>
+          </div>
+
+          {/* Android section */}
+          <div style={{ padding: '16px 18px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+              <Ic n="android" sz={13} col="#3DDC84" />
+              <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>Google Play</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: andOn ? '#0033A0' : T.textLt, background: andOn ? T.blue50 : T.pageBg, border: `1px solid ${andOn ? T.blue100 : T.border}`, borderRadius: 99, padding: '1px 8px' }}>
+                {andOn ? 'Enabled' : 'Skipped'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, paddingLeft: 2 }}>
+              <SumRow ok={andNotes.trim().length > 0} label={andNotes.trim() ? 'Release notes filled' : 'Release notes empty'} />
+              <SumRow ok={andChecks.filter(c => c.pass).length === andChecks.length} label={`Checklist: ${andChecks.filter(c => c.pass).length}/${andChecks.length} passed`} />
+              <SumRow ok={true} label="Store listing pre-filled" />
+            </div>
+          </div>
+
+          {/* Confirm */}
+          <div style={{ padding: '14px 18px' }}>
+            <BtnPrimary disabled={!canConfirm} onClick={() => canConfirm && go(6)} style={{ width: '100%', justifyContent: 'center' }}>
+              Confirm release
+            </BtnPrimary>
+            {disabledMsg && <p style={{ fontSize: 11, color: T.textXlt, marginTop: 8, textAlign: 'center', lineHeight: 1.5 }}>{disabledMsg}</p>}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+/* ─── Screen 6 — Submission in progress ─────────────────────────────────── */
+const S6 = ({ go, err, setErr }) => {
+  const steps = [
+    { id: 'q', label: 'Queued',     done: true  },
+    { id: 'b', label: 'Building',   done: true  },
+    { id: 's', label: 'Signing',    done: true  },
+    { id: 'u', label: 'Submitting', done: false, active: !err },
+    { id: 'r', label: 'In Review',  done: false },
+  ];
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 600, margin: '0 auto' }}>
+      <BtnGhost onClick={() => go(1)} style={{ padding: '4px 0', marginBottom: 18, color: T.textLt }}>
+        <Ic n="chevronRight" sz={13} col={T.textXlt} style={{ transform: 'rotate(180deg)' }} />
+        Back to releases
+      </BtnGhost>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: T.text, letterSpacing: '0.1px' }}>
+          {err ? 'Release needs attention' : 'Submitting to stores…'}
+        </h1>
+        <DemoToggle label="Demo: rejected" on={err} onChange={setErr} />
+      </div>
+
+      {err && (
+        <div style={{ background: T.red50, border: `1px solid ${T.red100}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.red100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="warning" sz={16} col={T.red} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ic n="apple" sz={12} col={T.red900} />
+                <span style={{ fontWeight: 600, fontSize: 14, color: T.red900 }}>Apple rejected this build</span>
+              </div>
+              <p style={{ fontSize: 13, color: T.red700, lineHeight: 1.7, marginBottom: 14 }}>
+                Your app contains references to competitor platforms. Guideline 3.1.1 — Apps must not include buttons, external links, or other calls to action that direct customers to purchase mechanisms other than in-app purchase.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <BtnPrimary onClick={() => {}} style={{ background: T.red, fontSize: 12, padding: '6px 12px' }} icon="external">View in App Store Connect</BtnPrimary>
+                <BtnGhost style={{ fontSize: 12 }} onClick={() => go(5)}>Fix and resubmit</BtnGhost>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 3 }}>v1.7.0 — iOS + Android</div>
+            <div style={{ fontSize: 12, color: T.textLt }}>Submission started May 1, 2026 at 2:38 PM</div>
+          </div>
+        </div>
+        <div style={{ margin: '16px 0' }}><ProgBar pct={err ? 56 : 70} color={err ? T.red : T.blue} /></div>
+        <div style={{ marginBottom: 22 }}><Steps steps={steps} color={err ? T.red : T.blue} /></div>
+
+        {/* Per-platform */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { icon: 'apple',   col: T.text,     label: 'iOS',     status: err ? 'Rejected' : 'In Review', note: err ? 'Rejected — action required' : 'Apple review: 24–48 hours' },
+            { icon: 'android', col: '#3DDC84',  label: 'Android', status: 'In Review',                    note: 'Google review: a few hours' },
+          ].map(p => (
+            <div key={p.label} style={{ borderRadius: 8, border: `1px solid ${T.border}`, background: '#F9FAFB', padding: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                <Ic n={p.icon} sz={12} col={p.col} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{p.label}</span>
+                <Badge status={p.status} />
+              </div>
+              <p style={{ fontSize: 12, color: T.textLt, lineHeight: 1.5 }}>{p.note}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {!err && (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <Note>You'll be notified by email and in Studio when your app goes live. You can safely close this page.</Note>
+          </div>
+          <BtnGhost style={{ color: T.blue }} onClick={() => go(7)}>Skip to live (demo) →</BtnGhost>
+        </>
+      )}
+    </div>
+  );
+};
+
+/* ─── Screen 7 — Release live ────────────────────────────────────────────── */
+const HIST7 = [
+  { v: 'v1.7.0', plat: 'iOS + Android', date: 'May 1, 2026',  status: 'Live', isNew: true },
+  { v: 'v1.6.0', plat: 'iOS + Android', date: 'Apr 18, 2026', status: 'Live' },
+  { v: 'v1.5.2', plat: 'Android',       date: 'Mar 31, 2026', status: 'Live' },
+  { v: 'v1.5.1', plat: 'iOS',           date: 'Mar 15, 2026', status: 'Live' },
+  { v: 'v1.5.0', plat: 'iOS + Android', date: 'Feb 28, 2026', status: 'Live' },
+];
+
+const S7 = ({ go }) => (
+  <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+
+    {/* Success header */}
+    <div style={{ textAlign: 'center', marginBottom: 32, paddingTop: 8 }}>
+      <div style={{ width: 56, height: 56, borderRadius: '50%', background: T.green50, border: `1px solid #BBF7D0`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+        <Ic n="checkCircle" sz={30} col={T.green} />
+      </div>
+      <h1 style={{ fontSize: 20, fontWeight: 600, color: T.text, marginBottom: 6, letterSpacing: '0.2px' }}>Your app is live on both stores</h1>
+      <p style={{ fontSize: 13, color: T.textLt }}>Version 1.7.0 is now available to all your users.</p>
+    </div>
+
+    {/* Store cards */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      {[
+        { icon: 'apple',   col: T.text,    label: 'App Store',   v: 'v1.7.0', t: 'May 1, 2026 at 5:12 PM', link: 'View on App Store'   },
+        { icon: 'android', col: '#3DDC84', label: 'Google Play', v: 'v1.7.0', t: 'May 1, 2026 at 3:47 PM', link: 'View on Google Play' },
+      ].map(p => (
+        <div key={p.label} style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <Ic n={p.icon} sz={16} col={p.col} />
+            <span style={{ fontWeight: 600, fontSize: 14, color: T.text }}>{p.label}</span>
+            <Badge status="Live" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: T.text, marginBottom: 3 }}>{p.v}</div>
+          <div style={{ fontSize: 12, color: T.textLt, marginBottom: 14 }}>{p.t}</div>
+          <button style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, color: T.blue, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            {p.link} <Ic n="external" sz={12} col={T.blue} />
+          </button>
+        </div>
+      ))}
+    </div>
+
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+      <BtnGhost onClick={() => go(1)}>Back to releases</BtnGhost>
+      <ReleaseDropdown go={go} />
+    </div>
+
+    {/* Updated history */}
+    <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.border}` }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.text, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Release history</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: '#F9FAFB' }}>
+            {['Version', 'Platform', 'Date', 'Status'].map(h => (
+              <th key={h} style={{ textAlign: 'left', padding: '10px 20px', fontSize: 11, fontWeight: 600, color: T.textLt, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {HIST7.map((r, i) => (
+            <tr key={i} style={{ borderTop: `1px solid ${T.border}`, background: r.isNew ? '#F0FDF4' : 'transparent' }}>
+              <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: T.text }}>
+                {r.v}
+                {r.isNew && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: T.green, background: T.green50, border: '1px solid #BBF7D0', borderRadius: 99, padding: '2px 7px' }}>New</span>}
+              </td>
+              <td style={{ padding: '12px 20px', fontSize: 13, color: T.textMd }}>{r.plat}</td>
+              <td style={{ padding: '12px 20px', fontSize: 13, color: T.textMd }}>{r.date}</td>
+              <td style={{ padding: '12px 20px' }}><Badge status={r.status} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+/* ─── Root ───────────────────────────────────────────────────────────────── */
+const App = () => {
+  const [screen,      setScreen]      = useState(1);
+  const [s1Blocker,   setS1Blocker]   = useState(false);
+  const [s1Build,     setS1Build]     = useState(false);
+  const [s1Review,    setS1Review]    = useState(false);
+  const [s1Rejected,  setS1Rejected]  = useState(false);
+  const [s1Failed,    setS1Failed]    = useState(false);
+  const [s3err,       setS3err]       = useState(false);
+  const [s6err,       setS6err]       = useState(false);
+  const [setupMode,   setSetupMode]   = useState(false);
+  const [step1Done,   setStep1Done]   = useState(false);
+  const [step2Done,   setStep2Done]   = useState(false);
+  const [setupDone,   setSetupDone]   = useState(false);
+
+  const go = n => {
+    setScreen(n);
+    if (n !== 3) setS3err(false);
+    if (n !== 6) setS6err(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: 'Outfit, Inter, ui-sans-serif, system-ui' }}>
+      <TopNav screen={screen} goHome={() => go(1)} />
+      <main style={{ flex: 1, overflowY: 'auto', background: T.pageBg }}>
+        {screen === 1 && setupMode && <S0 step1Done={step1Done} step2Done={step2Done} setupDone={setupDone} />}
+        {screen === 1 && !setupMode && <S1 go={go} blocker={s1Blocker} building={s1Build} inReview={s1Review} rejected={s1Rejected} failed={s1Failed} />}
+        {screen === 2 && <S2 go={go} />}
+        {screen === 3 && <S3 go={go} err={s3err} setErr={setS3err} />}
+        {screen === 4 && <S4 go={go} />}
+        {screen === 5 && <S5 go={go} />}
+        {screen === 6 && <S6 go={go} err={s6err} setErr={setS6err} />}
+        {screen === 7 && <S7 go={go} />}
+      </main>
+      {screen === 1 && (
+        <DemoPanel
+          blocker={s1Blocker}     setBlocker={setS1Blocker}
+          building={s1Build}      setBuilding={setS1Build}
+          inReview={s1Review}     setInReview={setS1Review}
+          rejected={s1Rejected}   setRejected={setS1Rejected}
+          failed={s1Failed}       setFailed={setS1Failed}
+          setupMode={setupMode}   setSetupMode={setSetupMode}
+          step1Done={step1Done}   setStep1Done={setStep1Done}
+          step2Done={step2Done}   setStep2Done={setStep2Done}
+          setupDone={setupDone}   setSetupDone={setSetupDone}
+        />
+      )}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
